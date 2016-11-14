@@ -13,7 +13,7 @@ library(forcats)
 
 
 ###ok let's load the data into R###
-goalie_data_regular_season <- read.csv("goalie.data.regular.season.csv") ###this file has to be in the R directory you set previously###
+goalie_data_regular_season <- read.csv("big.goalie.data.csv") ###this file has to be in the R directory you set previously###
 goalie_data_regular_season$season <- as.character(goalie_data_regular_season$season) ###turn the season variable into a factor###
 goalie_data_regular_season$Date <- ymd(goalie_data_regular_season$Date) ###turn the date of the game into a format R can work with###
 goalie_data_regular_season$Team <- as.character(goalie_data_regular_season$Team) ###turn the Team variable into a character string so we can modify it##
@@ -28,13 +28,15 @@ goalie_data_regular_season <- goalie_data_regular_season %>% ###modify some vari
          saL = G.L + S.L, 
          Name = as.character(Name)) %>%
   rename(team = Team, 
-         age = Age, 
          date = Date, 
          name = Name, 
+         toi = TOI,
+         age = Age,
          salary = Salary)
 
+
 goalie_data_regular_season <- goalie_data_regular_season %>% ###select the variables we want and omit any rows with NA (blank) values###
-  select(game_type, team, name, age, season, date, TOI, svH, svM, svL, saH, saM, saL, G.H, G.M, G.L)
+  select(game_type, team, name, age, salary, season, date, toi, svH, svM, svL, saH, saM, saL, G.H, G.M, G.L)
 
 ###combine Atlanta/Winnipeg and Phoenix/Arizona Team names
 goalie_data_regular_season$team[goalie_data_regular_season$team == "WPG"]<-"ATL-WPG"
@@ -44,9 +46,9 @@ goalie_data_regular_season$team[goalie_data_regular_season$team == "ARI"]<-"PHX-
 
 ###Creating Per-Season Averages###
 season_averages <- goalie_data_regular_season %>% ###create a new object in R to hold the per-season per-goalie averages###
-  select(name, TOI, season, svH, svM, svL, saH, saM, saL) %>% ###select the variables we want to work with###
+  select(name, toi, season, svH, svM, svL, saH, saM, saL) %>% ###select the variables we want to work with###
   group_by(name, season) %>% ###group the rows by name and season###
-  summarize(TOI = sum(TOI), ###sum the TOI for the new rows we created###
+  summarize(TOI = sum(toi), ###sum the TOI for the new rows we created###
             svH = mean(svH, na.rm = TRUE), ###take the average###
             svM = mean(svM, na.rm = TRUE), ###etc###
             svL = mean(svL, na.rm = TRUE),
@@ -64,7 +66,7 @@ write.csv(season_averages, "adjgsaa.season.averages.csv") #create a csv of the s
 
 ###Create Regular Season Goalie Statistics###
 regular_season <- goalie_data_regular_season %>% ###create a new object###
-  select(game_type, team, name, season, date, TOI, svH, svM, svL, saH, saM, saL, G.H, G.M, G.L) ###select the variables we want###
+  select(game_type, team, name, season, date, toi, svH, svM, svL, saH, saM, saL, G.H, G.M, G.L) ###select the variables we want###
 
 goalie_join_regular_season <- inner_join(regular_season, season_averages, by = "season") ###join the individual goalie data with the season average data###
 
@@ -72,7 +74,7 @@ df_regular_season <- goalie_join_regular_season %>% ###create a new object###
   mutate(lgsaa = (saL *(1 - la.svL) - G.L), ###create new variables. LGSAA = (low danger shots against * (1 - league average low danger save %) - low danger goals against)###
          mgsaa = (saM *(1 - la.svM) - G.M),
          hgsaa = (saH *(1 - la.svH) - G.H),
-         adjgsaa60 = ((lgsaa + mgsaa + hgsaa) / TOI) * 60, ###create adjGSAA60###
+         adjgsaa60 = ((lgsaa + mgsaa + hgsaa) / toi) * 60, ###create adjGSAA60###
          adjgsaa = lgsaa + mgsaa + hgsaa) ###create adjGSAA###
 
 df_regular_season <- df_regular_season %>%
@@ -88,18 +90,18 @@ player_summary <- df_regular_season %>% ###create a new object for player summar
             lgsaa = sum(lgsaa),
             mgsaa = sum(mgsaa),
             hgsaa = sum(hgsaa),
-            toi = sum(TOI)) %>%
+            toi = sum(toi)) %>%
   arrange(desc(adjgsaa))
 
-#write.csv(df_regular_season, "goalie.data.regular.season.csv") ###export to csv. take out the preceding "#"s if you want to run this line###
+write.csv(df_regular_season, "goalie.data.regular.season.csv") ###export to csv. take out the preceding "#"s if you want to run this line###
 
 #df_regular_season <- read_csv("goalie.data.regular.season.csv") %>%
   #mutate(season = as.character(season))
 
 regular_season_cumsum <- df_regular_season %>% ###create a data frame holding cumulative sums of adjGSAA
   select(name, date, game_number, adjgsaa) %>%
-  arrange(date) %>%
   group_by(name) %>%
+  arrange(date) %>%
   mutate(cum_adjgsaa = cumsum(adjgsaa)) %>%
   ungroup()
 
@@ -112,7 +114,7 @@ regular_season_cumsum <- regular_season_cumsum %>%
   arrange(desc(sum_adjgsaa)) %>%
   mutate(name = fct_reorder(name, -sum_adjgsaa), 
          max_date = max(date))
-?geom_label
+
 #write.csv(regular_season_cumsum, "regular.season.cumsum.csv") ###export to csv. take out the preceding "#"s if you want to run this line###
 
 ###Summary Regular Season Graphs###

@@ -1,5 +1,2 @@
 ﻿# AdjGSAA
-A repo for Adjusted Goals Scored Above Average
-A line I wrote in RStudio
-
-“Hi Chrissie”
+A repo for Adjusted Goals Scored Above Average.

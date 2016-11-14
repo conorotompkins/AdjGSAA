@@ -1,9 +1,8 @@
-setwd("C:/Users/conor/Dropbox/R/goalie_analysis")
+setwd("C:/Users/conor/githubfolder/AdjGSAA/playoffs")
 
 library(ggthemes)
 library(scales)
 library(ggplot2)
-library(ggmap)
 library(dplyr)
 library(lubridate)
 library(stringr)
@@ -14,11 +13,11 @@ library(forcats)
 
 
 ###ok let's load the data into R###
-goalie.playoff.data <- read.csv("goalie.playoffs.csv") ###this file has to be in the R directory you set previously###
-goalie.playoff.data$season <- as.character(goalie.playoff.data$season) ###turn the season variable into a factor###
-goalie.playoff.data$Date <- mdy(goalie.playoff.data$Date) ###turn the date of the game into a format R can work with###
-goalie.playoff.data$Team <- as.character(goalie.playoff.data$Team) ###turn the Team variable into a character string so we can modify it###
-goalie.playoff.data$game_type <- "playoff_game"
+goalie_data_playoffs <- read.csv("goalie.playoffs.csv") ###this file has to be in the R directory you set previously###
+goalie_data_playoffs$season <- as.character(goalie_data_playoffs$season) ###turn the season variable into a factor###
+goalie_data_playoffs$Date <- mdy(goalie_data_playoffs$Date) ###turn the date of the game into a format R can work with###
+goalie_data_playoffs$Team <- as.character(goalie_data_playoffs$Team) ###turn the Team variable into a character string so we can modify it###
+goalie_data_playoffs$game_type <- "playoff_game"
 
 
 goalie.playoff.data <- goalie.playoff.data %>% ###modify some variables so they are easier to work with

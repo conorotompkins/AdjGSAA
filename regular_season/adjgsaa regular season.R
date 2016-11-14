@@ -1,5 +1,5 @@
 ###set your working directory. you can also do this using the GUI (Session -> Set Working Directory)
-setwd("C:/Users/conor/githubfolder/AdjGSAA")
+setwd("C:/Users/conor/githubfolder/AdjGSAA/regular_season")
 ###these are the packages I use regularly. you need to install them (install.packages("packagename")) before loading them into the session with library(packagename)
 library(ggthemes)
 library(scales)
@@ -93,7 +93,7 @@ player_summary <- df_regular_season %>% ###create a new object for player summar
 
 #write.csv(df_regular_season, "goalie.data.regular.season.csv") ###export to csv. take out the preceding "#"s if you want to run this line###
 
-#df_regular.season <- read_csv("goalie.data.regular.season.csv") %>%
+#df_regular_season <- read_csv("goalie.data.regular.season.csv") %>%
   #mutate(season = as.character(season))
 
 regular_season_cumsum <- df_regular_season %>% ###create a data frame holding cumulative sums of adjGSAA

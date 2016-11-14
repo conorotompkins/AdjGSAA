@@ -66,7 +66,7 @@ write.csv(season_averages, "adjgsaa.season.averages.csv") #create a csv of the s
 
 ###Create Regular Season Goalie Statistics###
 regular_season <- goalie_data_regular_season %>% ###create a new object###
-  select(game_type, team, name, season, date, toi, svH, svM, svL, saH, saM, saL, G.H, G.M, G.L) ###select the variables we want###
+  select(game_type, team, name, age, salary, season, date, toi, svH, svM, svL, saH, saM, saL, G.H, G.M, G.L) ###select the variables we want###
 
 goalie_join_regular_season <- inner_join(regular_season, season_averages, by = "season") ###join the individual goalie data with the season average data###
 

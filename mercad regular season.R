@@ -9,38 +9,43 @@ library(lubridate)
 library(stringr)
 library(readr)
 library(tidyr)
-
+library(forcats)
 
 
 ###ok let's load the data into R###
-goalie.data.regular.season <- read.csv("goalie.data.regular.season.csv") ###this file has to be in the R directory you set previously###
-goalie.data.regular.season$season <- as.character(goalie.data.regular.season$season) ###turn the season variable into a factor###
-goalie.data.regular.season$Date <- ymd(goalie.data.regular.season$Date) ###turn the date of the game into a format R can work with###
-goalie.data.regular.season$Team <- as.character(goalie.data.regular.season$Team) ###turn the Team variable into a character string so we can modify it##
-goalie.data.regular.season$game_type <- "regular_season" # add a column declaring that the game was a regular season game
+goalie_data_regular_season <- read.csv("goalie.data.regular.season.csv") ###this file has to be in the R directory you set previously###
+goalie_data_regular_season$season <- as.character(goalie_data_regular_season$season) ###turn the season variable into a factor###
+goalie_data_regular_season$Date <- ymd(goalie_data_regular_season$Date) ###turn the date of the game into a format R can work with###
+goalie_data_regular_season$Team <- as.character(goalie_data_regular_season$Team) ###turn the Team variable into a character string so we can modify it##
+goalie_data_regular_season$game_type <- "regular_season" # add a column declaring that the game was a regular season game
 
-goalie.data.regular.season <- goalie.data.regular.season %>% ###modify some variables so they are easier to work with
+goalie_data_regular_season <- goalie_data_regular_season %>% ###modify some variables so they are easier to work with
   mutate(svH = Sv.H / 100, ###turn the sv% variables into decimals (99 -> .99)
          svM = Sv.M / 100,
          svL = Sv.L / 100,
          saH = G.M + S.H, ###goals + shots = saves###
          saM = G.M + S.M,
          saL = G.L + S.L, 
-         Name = as.character(Name))
+         Name = as.character(Name)) %>%
+  rename(team = Team, 
+         age = Age, 
+         date = Date, 
+         name = Name, 
+         salary = Salary)
 
-goalie.data.regular.season <- goalie.data.regular.season %>% ###select the variables we want and omit any rows with NA (blank) values###
-  select(game_type, Team, Name, Age, season, Date, TOI, svH, svM, svL, saH, saM, saL, G.H, G.M, G.L)
+goalie_data_regular_season <- goalie_data_regular_season %>% ###select the variables we want and omit any rows with NA (blank) values###
+  select(game_type, team, name, age, season, date, TOI, svH, svM, svL, saH, saM, saL, G.H, G.M, G.L)
 
 ###combine Atlanta/Winnipeg and Phoenix/Arizona Team names
-goalie.data.regular.season$Team[goalie.data.regular.season$Team == "WPG"]<-"ATL-WPG"
-goalie.data.regular.season$Team[goalie.data.regular.season$Team == "ATL"]<-"ATL-WPG"
-goalie.data.regular.season$Team[goalie.data.regular.season$Team == "PHX"]<-"PHX-ARI"
-goalie.data.regular.season$Team[goalie.data.regular.season$Team == "ARI"]<-"PHX-ARI"
+goalie_data_regular_season$team[goalie_data_regular_season$team == "WPG"]<-"ATL-WPG"
+goalie_data_regular_season$team[goalie_data_regular_season$team == "ATL"]<-"ATL-WPG"
+goalie_data_regular_season$team[goalie_data_regular_season$team == "PHX"]<-"PHX-ARI"
+goalie_data_regular_season$team[goalie_data_regular_season$team == "ARI"]<-"PHX-ARI"
 
 ###Creating Per-Season Averages###
-season.averages <- goalie.data.regular.season %>% ###create a new object in R to hold the per-season per-goalie averages###
-  select(Name, TOI, season, svH, svM, svL, saH, saM, saL) %>% ###select the variables we want to work with###
-  group_by(Name, season) %>% ###group the rows by name and season###
+season_averages <- goalie_data_regular_season %>% ###create a new object in R to hold the per-season per-goalie averages###
+  select(name, TOI, season, svH, svM, svL, saH, saM, saL) %>% ###select the variables we want to work with###
+  group_by(name, season) %>% ###group the rows by name and season###
   summarize(TOI = sum(TOI), ###sum the TOI for the new rows we created###
             svH = mean(svH, na.rm = TRUE), ###take the average###
             svM = mean(svM, na.rm = TRUE), ###etc###
@@ -50,35 +55,35 @@ season.averages <- goalie.data.regular.season %>% ###create a new object in R to
             saL = sum(saL))
 
 ###create the per-season averages###
-season.averages <- season.averages %>%
+season_averages <- season_averages %>%
   group_by(season) %>% ###group the rows by season###
   summarize(la.svH = mean(svH, na.rm = TRUE), ###take the means of the danger save percentages###
             la.svM = mean(svM, na.rm = TRUE), 
             la.svL = mean(svL, na.rm = TRUE))
-#write.csv(season.averages, "adjgsaa.season.averages.csv") #create a csv of the season averages object. take out the preceding "#"s if you want to run this line
+write.csv(season_averages, "adjgsaa.season.averages.csv") #create a csv of the season averages object. take out the preceding "#"s if you want to run this line
 
 ###Create Regular Season Goalie Statistics###
-regular.season <- goalie.data.regular.season %>% ###create a new object###
-  select(game_type, Team, Name, season, Date, TOI, svH, svM, svL, saH, saM, saL, G.H, G.M, G.L) ###select the variables we want###
+regular_season <- goalie_data_regular_season %>% ###create a new object###
+  select(game_type, team, name, season, date, TOI, svH, svM, svL, saH, saM, saL, G.H, G.M, G.L) ###select the variables we want###
 
-goalie.join.regular.season <- inner_join(regular.season, season.averages, by = "season") ###join the individual goalie data with the season average data###
+goalie_join_regular_season <- inner_join(regular_season, season_averages, by = "season") ###join the individual goalie data with the season average data###
 
-df.regular.season <- goalie.join.regular.season %>% ###create a new object###
+df_regular_season <- goalie_join_regular_season %>% ###create a new object###
   mutate(lgsaa = (saL *(1 - la.svL) - G.L), ###create new variables. LGSAA = (low danger shots against * (1 - league average low danger save %) - low danger goals against)###
          mgsaa = (saM *(1 - la.svM) - G.M),
          hgsaa = (saH *(1 - la.svH) - G.H),
          adjgsaa60 = ((lgsaa + mgsaa + hgsaa) / TOI) * 60, ###create adjGSAA60###
          adjgsaa = lgsaa + mgsaa + hgsaa) ###create adjGSAA###
 
-df.regular.season <- df.regular.season %>%
-  group_by(Name) %>% ###group the rows by goalie name###
-  arrange(Date) %>% ###arrange the rows by date###
-  mutate(Game.Number = dense_rank(Date),
+df_regular_season <- df_regular_season %>%
+  group_by(name) %>% ###group the rows by goalie name###
+  arrange(date) %>% ###arrange the rows by date###
+  mutate(game_number = dense_rank(date),
          season = as.character(season)) %>% ###create the "game number" variable"###
   ungroup()
 
-player.summary <- df.regular.season %>% ###create a new object for player summary data###
-  group_by(Name) %>% ###group by goalie name###
+player_summary <- df_regular_season %>% ###create a new object for player summary data###
+  group_by(name) %>% ###group by goalie name###
   summarize(adjgsaa = sum(adjgsaa), ###sum up all the variables###
             lgsaa = sum(lgsaa),
             mgsaa = sum(mgsaa),
@@ -86,43 +91,42 @@ player.summary <- df.regular.season %>% ###create a new object for player summar
             toi = sum(TOI)) %>%
   arrange(desc(adjgsaa))
 
-#(df.regular.season, "regular.season.mercad.csv") ###export to csv. take out the preceding "#"s if you want to run this line###
+#write.csv(df_regular_season, "goalie.data.regular.season.csv") ###export to csv. take out the preceding "#"s if you want to run this line###
 
-df.regular.season <- read_csv("goalie.data.regular.season.csv") %>%
-  mutate(season = as.character(season))
+#df_regular.season <- read_csv("goalie.data.regular.season.csv") %>%
+  #mutate(season = as.character(season))
 
-regular.season.cumsum <- df.regular.season %>% ###create a data frame holding cumulative sums of adjGSAA
-  select(Name, Date, Game.Number, adjgsaa) %>%
-  arrange(Date) %>%
-  group_by(Name) %>%
-  mutate(cum.adjgsaa = cumsum(adjgsaa)) %>%
+regular_season_cumsum <- df_regular_season %>% ###create a data frame holding cumulative sums of adjGSAA
+  select(name, date, game_number, adjgsaa) %>%
+  arrange(date) %>%
+  group_by(name) %>%
+  mutate(cum_adjgsaa = cumsum(adjgsaa)) %>%
   ungroup()
 
-top_goalies <- player.summary %>%
-  select(Name, adjgsaa) %>%
+top_goalies <- player_summary %>%
+  select(name, adjgsaa) %>%
   rename(sum_adjgsaa = adjgsaa)
 
-regular.season.cumsum <- regular.season.cumsum %>%
+regular_season_cumsum <- regular_season_cumsum %>%
   left_join(top_goalies) %>%
   arrange(desc(sum_adjgsaa)) %>%
-  mutate(Name = fct_reorder(Name, -sum_adjgsaa), 
-         max_date = max(Date))
+  mutate(name = fct_reorder(name, -sum_adjgsaa), 
+         max_date = max(date))
 ?geom_label
-#write.csv(regular.season.cumsum, "regular.season.cumsum.csv") ###export to csv. take out the preceding "#"s if you want to run this line###
-max(regular.season.cumsum$Date)
-###Regular Season Graphs###
-ggplot(regular.season.cumsum, aes(Game.Number, cum.adjgsaa, alpha = sum_adjgsaa)) + ###plot the rs.cumsum data using Game.Number as the X axis, cum.adjgsaa as the Y Axis, and color by the Name###
+#write.csv(regular_season_cumsum, "regular.season.cumsum.csv") ###export to csv. take out the preceding "#"s if you want to run this line###
+
+###Summary Regular Season Graphs###
+ggplot(regular_season_cumsum, aes(game_number, cum_adjgsaa, alpha = sum_adjgsaa, group = name)) + ###plot the rs.cumsum data using Game.Number as the X axis, cum.adjgsaa as the Y Axis, and color by the Name###
   geom_hline(yintercept = 0) + ###add a horizontal line at 0 on the Y axis###
   geom_line() + ###plot using a line graph###
-  scale_size(range = c(0, 3)) +
   scale_alpha(range = c(0, 1)) +
-  guides(color = FALSE) + ###turn off the color legend###
+  guides(alpha = FALSE) + ###turn off the color legend###
   xlab("Game Number") + ###label the X axis###
   ylab("Cumulative AdjGSAA") + ###label the Y axis###
   theme_bw() ###use a black and white theme###
 ggsave("cumulative gsaa.png", width = 10, height = 10)
 
-ggplot(filter(player.summary, toi > 3000), aes(reorder(Name, adjgsaa), adjgsaa)) + ###plot the player summary data filtering out goalies with less than 3000 TOI. Name as the X axis, adjgsaa as the Y Axis, sort by adjgsaa###
+ggplot(filter(player_summary, toi > 3000), aes(reorder(name, adjgsaa), adjgsaa)) + ###plot the player summary data filtering out goalies with less than 3000 TOI. Name as the X axis, adjgsaa as the Y Axis, sort by adjgsaa###
   geom_bar(stat = "identity", position = "dodge", width = .5) + ###plot using a bar chart###
   coord_flip() + ###flip the axes###
   xlab(NULL) + ###no X axis label###
@@ -130,14 +134,3 @@ ggplot(filter(player.summary, toi > 3000), aes(reorder(Name, adjgsaa), adjgsaa))
   ggtitle("NHL Goalies with > 3000 TOI, 2005-2016") +
   theme_bw() ###use a black and white theme###
 ggsave("player summary gsaa.png", width = 6, height = 12)
-
-ggplot(filter(df.regular.season, Name == "Marc-Andre.Fleury"), aes(Game.Number, adjgsaa60)) +
-  geom_hline(yintercept = 0) +
-  geom_smooth() +
-  labs(y = "Adjusted Goals Saved Above Average Per 60", title = "Marc-Andre Fleury") +
-  theme_bw()
-ggsave("maf mercad.png")
-
-ggplot(df.regular.season, aes(TOI, adjgsaa60)) +
-  geom_point(alpha = I(.3)) +
-  theme_bw()

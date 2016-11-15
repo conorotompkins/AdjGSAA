@@ -1,8 +1,8 @@
-setwd("C:/Users/conor/Dropbox/R/goalie_analysis")
+setwd("C:/Users/conor/githubfolder/AdjGSAA/graphs")
+
 library(ggthemes)
 library(scales)
 library(ggplot2)
-library(ggmap)
 library(dplyr)
 library(lubridate)
 library(stringr)
@@ -10,83 +10,87 @@ library(readr)
 library(tidyr)
 library(cowplot)
 library(forcats)
-library(viridis)
+library(RCurl)
 
-df.regular.season <- read_csv("regular.season.mercad.csv") %>%
-  mutate(season = as.character(season)) %>%
-  filter(TOI > 2)
+df_combined <- read.csv(text=getURL("https://raw.githubusercontent.com/conorotompkins/AdjGSAA/master/combined/adjgsaa.combined.csv")) %>%
+  mutate(season = as.character(season), 
+         team = as.character(team), 
+         name = as.character(name), 
+         date = ymd(date)) %>%
+  filter(toi > 2)
 
 goalies <- c("Henrik.Lundqvist", "Steve.Mason")
 
-ggplot(filter(df.regular.season, Name %in% goalies), aes(Game.Number, adjgsaa60, color = Name, fill = Name)) +
+ggplot(filter(df_combined, name %in% goalies), aes(game_number, adjgsaa60, color = name, fill = name)) +
   geom_hline(yintercept = 0) +
   geom_point(size = 1, alpha = I(.8)) +
   geom_smooth(span = .3, se = T, size = 2, alpha = I(.5), show.legend=FALSE) +
-  facet_wrap(~Name, ncol = 1) +
+  facet_wrap(~name, ncol = 1) +
   scale_y_continuous(limits = c(-5, 5)) +
   labs(y = "Adjusted Goals Saved Above Average Per 60", x = "Game Number", title = "2005-2016 5v5") +
-  theme_nhh()
-  
-  theme_bw() +
-  theme(strip.text.x = element_text(size = 20),
-        panel.grid.minor = element_blank(),
-        strip.background = element_rect(fill = "white"))
-ggsave("adjgaa60 test.png")
-?scale_fill_viridis
-?geom_smooth
+  theme_bw()
+ggsave("adjgaa60 goalie comparison.png")
+
+combined_cumsum <- df_combined %>% ###create a data frame holding cumulative sums of adjGSAA
+  select(name, date, game_number, adjgsaa) %>%
+  group_by(name) %>%
+  arrange(date) %>%
+  mutate(cum_adjgsaa = cumsum(adjgsaa)) %>%
+  ungroup()
+
+player_summary <- df_combined %>% ###create a new object for player summary data###
+  group_by(name) %>% ###group by goalie name###
+  summarize(adjgsaa = sum(adjgsaa), ###sum up all the variables###
+            lgsaa = sum(lgsaa),
+            mgsaa = sum(mgsaa),
+            hgsaa = sum(hgsaa),
+            toi = sum(toi)) %>%
+  arrange(desc(adjgsaa))
+
+top_goalies <- player_summary %>%
+  select(name, adjgsaa) %>%
+  rename(sum_adjgsaa = adjgsaa)
+
+combined_cumsum <- combined_cumsum %>%
+  left_join(top_goalies) %>%
+  arrange(desc(sum_adjgsaa)) %>%
+  mutate(name = fct_reorder(name, -sum_adjgsaa), 
+         max_date = max(date))
 
 
-df1 <- df.regular.season %>%
-  filter(Name %in% goalies) %>%
-  select(Name, Game.Number, adjgsaa60)
+df2 <- combined_cumsum %>%
+  filter(name %in% goalies)
 
-ggplot(df1, aes(Game.Number, adjgsaa60, color = Name, fill = Name)) +
-  geom_hline(yintercept = 0) +
-  geom_smooth(span = .3) +
-  labs(y = "Adjusted Goals Saved Above Average Per 60", title = NULL) + 
-  theme_nhh()
-
-?theme_bw()
-
-
-
-rs.cumsum <- read_csv("rs.cumsum.csv") %>%
-  mutate(season = as.character(season))
-
-df2 <- rs.cumsum %>%
-  filter(Name %in% goalies)
-
-df_filter <- player.summary %>%
+df_filter <- player_summary %>%
   filter(toi > 3000) %>%
-  select(Name)
+  select(name)
 
-ggplot(filter(rs.cumsum, Name %in% df_filter$Name), aes(Game.Number, cum.adjgsaa, color = Name)) +
+ggplot(filter(combined_cumsum, name %in% df_filter$name), aes(game_number, cum_adjgsaa, color = name)) +
   geom_hline(yintercept = 0) +
   geom_smooth(span = .3, se =  F) +
-  labs(y = "Adjusted Goals Saved Above Average", title = "Marc-Andre Fleury") +
-  theme_nhh()
+  labs(y = "Adj. Goals Saved Above Average", title = "Cumulative Adj. GSAA, career TOI > 3000") +
+  guides(color = FALSE) +
+  theme_bw()
 
 
-season_sums <- df.regular.season %>%
-  group_by(Name, season) %>%
-  select(Name, season, adjgsaa60, TOI) %>%
+season_sums <- df_combined %>%
+  group_by(name, season) %>%
+  select(name, season, adjgsaa60, toi) %>%
   summarize(sd_adjgsaa60 = sd(adjgsaa60, na.rm = TRUE),
-            TOI = sum(TOI),
+            toi = sum(toi),
             adjgsaa60 =  mean(adjgsaa60, na.rm = TRUE)) %>%
-  filter(TOI > 500)
+  filter(toi > 500)
 
 cor1 <- cor(season_sums$adjgsaa60, season_sums$sd_adjgsaa60) ^2
 cor1 <- round(cor1, digits = 2)
 
 
-ggplot(season_sums, aes(sd_adjgsaa60, adjgsaa60, label = Name, alpha = TOI)) +
+ggplot(season_sums, aes(sd_adjgsaa60, adjgsaa60, label = name, alpha = toi)) +
   geom_hline(yintercept = 0) +
   geom_text() +
   geom_smooth(show.legend=FALSE) +
-  labs(x = "Consistency (high to low)", y  = "Mean Adjusted GSAA per 60", title = "Goalie Quality versus Consistency") +
-  annotate("text", x = 5, y = 1.5, label = paste0("R^2 = ", cor1)) +
-  theme(axis.line = axis_custom()) +
-  theme_nhh()
+  labs(x = "Consistency (high to low)", y  = "Mean Adjusted GSAA per 60", title = paste("Goalie Quality versus Consistency, R^2 = ", cor1)) +
+  theme_bw()
 ggsave("Quality vs. Consistency.png")
 
 ggplot(player.summary, aes(toi, adjgsaa, label = Name)) +
@@ -95,13 +99,13 @@ ggplot(player.summary, aes(toi, adjgsaa, label = Name)) +
   theme_nhh()
 ggsave("AdjGSAA vs TOI.png")
 
-test <- df.regular.season %>%
+test <- df_combined %>%
   unique(season)
 
-abc <- df.regular.season %>%
+abc <- df_combined %>%
   unique(season)
 
-maf <- df.regular.season %>%
+maf <- df_combined %>%
   filter(Name == "Marc-Andre.Fleury",
          TOI > 2) %>%
   select(Name, season, Date, Game.Number, adjgsaa60) %>%
@@ -148,8 +152,8 @@ ggplot(filter(maf_summary, measure == "adjgsaa60_sd"), aes(measure, metric, fill
   theme_bw() +
   theme(axis.text.x=element_blank(),
         axis.ticks.x=element_blank())
-  ggsave("maf coach sd.png")
-  
+ggsave("maf coach sd.png")
+
 ggplot(maf, aes(adjgsaa60, fill = coach, color = coach)) +
   geom_density(alpha = I(.7)) +
   geom_vline(xintercept = 0) +
@@ -172,7 +176,7 @@ ggplot(maf, aes(adjgsaa60, fill = coach)) +
 ggsave("maf histogram.png")
 
 goalie <- "Marc-Andre.Fleury"
-ggplot(filter(df.regular.season, Name == goalie), aes(adjgsaa60, fill = season)) +
+ggplot(filter(df_combined, Name == goalie), aes(adjgsaa60, fill = season)) +
   geom_density(alpha = I(.7)) +
   geom_vline(xintercept = 0) +
   scale_y_continuous(label = percent) +

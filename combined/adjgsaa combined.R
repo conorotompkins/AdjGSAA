@@ -19,7 +19,7 @@ df_playoff_games <- read_csv("goalie.data.playoffs.csv") %>%
 
 df_combined <- rbind(df_regular_season, df_playoff_games)
 
-df_combined <- mercad_combined %>%
+df_combined <- df_combined %>%
   group_by(name) %>% ###group the rows by goalie name###
   arrange(date) %>% ###arrange the rows by date###
   mutate(game_number = dense_rank(date),

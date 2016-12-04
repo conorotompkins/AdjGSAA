@@ -12,6 +12,9 @@ library(cowplot)
 library(forcats)
 library(RCurl)
 
+source("https://raw.githubusercontent.com/conorotompkins/AdjGSAA/master/graphs/theme_nhh.R")
+theme_set(theme_nhh())
+
 df_combined <- read.csv(text=getURL("https://raw.githubusercontent.com/conorotompkins/AdjGSAA/master/combined/adjgsaa.combined.csv")) %>%
   mutate(season = as.character(season), 
          team = as.character(team), 
@@ -99,16 +102,18 @@ ggplot(player.summary, aes(toi, adjgsaa, label = Name)) +
   theme_nhh()
 ggsave("AdjGSAA vs TOI.png")
 
-player_gsaa <- df_combined %>%
+#player season summary bar chart
+df_combined %>%
   select(season, name, adjgsaa60, toi) %>%
-  group_by(season, name) %>%
+  mutate(key = paste0(name, season)) %>%
+  group_by(key) %>%
   summarize(adjgsaa60 = mean(adjgsaa60),
             toi = sum(toi)) %>%
   filter(toi > 3000) %>%
-  arrange(desc(adjgsaa60))
+  ggplot(aes(reorder(key, adjgsaa60), adjgsaa60)) +
+    geom_col() +
+    coord_flip()
 
-ggplot(player_gsaa, aes(name, adjgsaa60)) +
-  geom_col() +
-  labs(x = NULL)  
+ggsave("test plot.png")
 ?as.factor
 ?geom_bar

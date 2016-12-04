@@ -1,3 +1,5 @@
+setwd("C:/Users/conor/githubfolder/AdjGSAA/graphs/MAF coach")
+
 library(ggthemes)
 library(scales)
 library(ggplot2)
@@ -60,7 +62,7 @@ maf_coach_summary <- maf %>%
 
 ggplot(maf_coach_summary, aes(coach, adjgsaa60_mean, fill = coach)) +
   geom_col() +
-  coord_cartesian(ylim = c(0, .5)) +
+  coord_cartesian(ylim = c(0, 1)) +
   scale_fill_viridis(discrete = TRUE) +
   scale_y_continuous(expand = c(0, 0)) +
   labs(y = "Mean AdjGSAA per 60", x = "Goalie Coach", title = "Marc-Andre Fleury Coach Analysis", caption = caption) +

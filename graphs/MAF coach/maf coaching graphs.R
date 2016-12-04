@@ -33,10 +33,24 @@ ggplot(maf, aes(game_number, adjgsaa60)) +
   geom_vline(xintercept = 530) +
   geom_point(alpha = I(.5)) +
   geom_smooth(size = 2, span = .3) +
-  geom_text(aes(585, -15, label="Coaching change"), size = 8) + 
+  geom_text(aes(600, -15, label="Coaching change"), size = 6) + 
   guides(color = guide_legend(title = "Goalie Coach"), fill = FALSE) +
   labs(y = "Adjusted GSAA per 60", x = "Game Number", title = "Marc-Andre Fleury Goalie Coach Comparison", caption = caption) +
   theme(plot.caption = element_text(size=12, hjust=1))
+ggsave("MAF career line chart.png", width = 12, height = 6)
+
+ggplot(maf, aes(game_number, adjgsaa60, color = coach, fill = coach)) +
+  geom_hline(yintercept = 0) +
+  geom_vline(xintercept = 530) +
+  geom_point(alpha = I(.5)) +
+  geom_smooth(size = 2, span = .3) +
+  geom_text(aes(650, -15, label="Coaching change"), size = 6, color = "black") + 
+  scale_fill_viridis(discrete = TRUE) +
+  scale_color_viridis(discrete = TRUE) +
+  guides(color = guide_legend(title = "Goalie Coach"), fill = FALSE) +
+  labs(y = "Adjusted GSAA per 60", x = "Game Number", title = "Marc-Andre Fleury Goalie Coach Comparison", caption = caption) +
+  theme(plot.caption = element_text(size=12, hjust=1))
+ggsave("MAF career line chart with coaches.png", width = 12, height = 6)
 
 
 maf_coach_summary <- maf %>%
@@ -46,13 +60,13 @@ maf_coach_summary <- maf %>%
 
 ggplot(maf_coach_summary, aes(coach, adjgsaa60_mean, fill = coach)) +
   geom_col() +
-  coord_cartesian(ylim = c(0, 1)) +
+  coord_cartesian(ylim = c(0, .5)) +
   scale_fill_viridis(discrete = TRUE) +
   scale_y_continuous(expand = c(0, 0)) +
   labs(y = "Mean AdjGSAA per 60", x = "Goalie Coach", title = "Marc-Andre Fleury Coach Analysis", caption = caption) +
   guides(fill = FALSE) +
   theme(plot.caption = element_text(size=12, hjust=1))
-
+ggsave("coach gssaa60 mean bar chart.png", width = 12, height = 12)
 
 ggplot(maf_coach_summary, aes(coach, adjgsaa60_sd, fill = coach)) +
   geom_col() +
@@ -62,6 +76,7 @@ ggplot(maf_coach_summary, aes(coach, adjgsaa60_sd, fill = coach)) +
   guides(fill = FALSE) +
   scale_fill_viridis(discrete = TRUE) +
   theme(plot.caption = element_text(size=12, hjust=1))
+ggsave("coach gssaa60 stddev bar chart.png", width = 12, height = 12)
 
 #standard deviation line chart
 maf %>%
@@ -75,7 +90,9 @@ maf %>%
   scale_color_viridis(discrete = TRUE) +
   guides(color = guide_legend(title = "Goalie Coach")) +
   theme(plot.caption = element_text(size=12, hjust=1),
-        plot.subtitle = element_text(size = 12))
+        plot.subtitle = element_text(size = 12),
+        axis.text.x = element_text(size = 10))
+ggsave("coach gssaa60 stddev line chart.png", width = 10, height = 6)
 
 ggplot(maf, aes(adjgsaa60, fill = coach)) +  
   geom_histogram(binwidth = .5, alpha = I(.8)) +
@@ -88,3 +105,4 @@ ggplot(maf, aes(adjgsaa60, fill = coach)) +
   guides(fill = FALSE) +
   theme(plot.caption = element_text(size=12, hjust=1),
         plot.subtitle = element_text(size = 12))
+ggsave("MAF coaches histogram.png", width = 12, height = 12)

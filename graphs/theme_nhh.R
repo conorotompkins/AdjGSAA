@@ -7,7 +7,7 @@ theme_nhh <- function (base_size = 11, base_family = "")
         axis.line = element_line(),
         axis.line.x = element_blank(), 
         axis.line.y = element_blank(),
-        axis.text = element_text(size = rel(1), colour = "black"),
+        axis.text = element_text(size = rel(2), color = "black"),
         axis.text.x = element_text(margin = margin(t = 0.8 * half_line/2), vjust = 1),
         axis.text.y = element_text(margin = margin(r = 0.8 * half_line/2), hjust = 1),
         axis.ticks = element_line(colour = "grey20"), 

@@ -1,16 +1,6 @@
 setwd("C:/Users/conor/githubfolder/AdjGSAA/graphs/MAF coach")
 
-library(ggthemes)
-library(scales)
-library(ggplot2)
-library(dplyr)
-library(lubridate)
-library(stringr)
-library(readr)
-library(tidyr)
-library(cowplot)
-library(forcats)
-library(RCurl)
+library(tidyverse)
 library(viridis)
 
 source("https://raw.githubusercontent.com/conorotompkins/AdjGSAA/master/graphs/theme_nhh.R")
@@ -60,6 +50,10 @@ maf_coach_summary <- maf %>%
   summarize(adjgsaa60_mean = mean(adjgsaa60, na.rm = TRUE),
             adjgsaa60_sd = sd(adjgsaa60, na.rm = TRUE)) 
 
+diff <- .2033 - .0704
+(diff * 3000) / 60
+diff * 100
+
 ggplot(maf_coach_summary, aes(coach, adjgsaa60_mean, fill = coach)) +
   geom_col() +
   coord_cartesian(ylim = c(0, 1)) +
@@ -108,3 +102,67 @@ ggplot(maf, aes(adjgsaa60, fill = coach)) +
   theme(plot.caption = element_text(size=12, hjust=1),
         plot.subtitle = element_text(size = 12))
 ggsave("MAF coaches histogram.png", width = 12, height = 12)
+
+
+df_combined <- read_csv("https://raw.githubusercontent.com/conorotompkins/AdjGSAA/master/combined/adjgsaa.combined.csv")
+
+df_combined %>%
+  select(season, name, adjgsaa60, toi) %>%
+  filter(toi > 2) %>%
+  mutate(key = paste0(name, season)) %>%
+  group_by(key) %>%
+  summarize(adjgsaa60 = mean(adjgsaa60),
+            toi = sum(toi)) %>%
+  filter(toi > 3000) %>%
+  ggplot(aes(reorder(key, adjgsaa60), adjgsaa60)) +
+  geom_col(width = 1, alpha = I(.5), fill = "black") +
+  geom_hline(yintercept = .07, color = "purple", size = 1.5) +
+  geom_hline(yintercept = .2, color = "yellow", size = 1.5) +
+  coord_flip() +
+  labs(title = "Goalie seasons > 3000 TOI",
+       y = "Adj. GSAA Per 60",
+       x = "Goalies",
+       caption = "@Null_HHockey") +
+  theme(panel.grid = element_blank(),
+        axis.text.y = element_blank(),
+        plot.caption = element_text(hjust = 1),
+        panel.background = element_rect(fill = "grey70"))
+ggsave("MAF gsaa difference.png", width = 12, height = 12)
+
+test <- df_combined %>%
+  select(season, name, adjgsaa60, toi) %>%
+  filter(toi > 2) %>%
+  mutate(key = paste0(name, season)) %>%
+  group_by(key) %>%
+  summarize(adjgsaa60 = mean(adjgsaa60),
+            toi = sum(toi)) %>%
+  filter(toi > 3000)
+
+
+df_combined %>%
+  select(season, name, adjgsaa60, toi) %>%
+  filter(toi > 2) %>%
+  mutate(key = paste0(name, season)) %>%
+  group_by(key) %>%
+  summarize(adjgsaa60_stddev = sd(adjgsaa60),
+            toi = sum(toi)) %>%
+  filter(toi > 3000) %>%
+  ggplot(aes(reorder(key, adjgsaa60_stddev), adjgsaa60_stddev)) +
+  geom_col(width = 1, alpha = I(.5), fill = "black") +
+  geom_hline(yintercept = 2.4, color = "purple", size = 1.5) +
+  geom_hline(yintercept = 1.9, color = "yellow", size = 1.5) +
+  coord_flip() +
+  labs(title = "Goalie seasons > 3000 TOI",
+       y = "Standard Deviations of Adj. GSAA Per 60",
+       x = "Goalies",
+       caption = "@Null_HHockey") +
+  theme(panel.grid = element_blank(),
+        axis.text.y = element_blank(),
+        plot.caption = element_text(hjust = 1),
+        panel.background = element_rect(fill = "grey70"))
+ggsave("MAF gsaa stddev.png", width = 12, height = 12)
+
+
+?viridis
+viridis()
+viridis_pal()

@@ -99,88 +99,16 @@ ggplot(player.summary, aes(toi, adjgsaa, label = Name)) +
   theme_nhh()
 ggsave("AdjGSAA vs TOI.png")
 
-test <- df_combined %>%
-  unique(season)
+player_gsaa <- df_combined %>%
+  select(season, name, adjgsaa60, toi) %>%
+  group_by(season, name) %>%
+  summarize(adjgsaa60 = mean(adjgsaa60),
+            toi = sum(toi)) %>%
+  filter(toi > 3000) %>%
+  arrange(desc(adjgsaa60))
 
-abc <- df_combined %>%
-  unique(season)
-
-maf <- df_combined %>%
-  filter(Name == "Marc-Andre.Fleury",
-         TOI > 2) %>%
-  select(Name, season, Date, Game.Number, adjgsaa60) %>%
-  mutate(coach = ifelse(Date < "2013-04-28", "Giles Meloche", "Mike Bales"))
-
-ggplot(maf, aes(Game.Number, adjgsaa60, color = coach, fill = coach)) +
-  geom_hline(yintercept = 0) +
-  geom_point(alpha = I(.5)) +
-  geom_smooth(size = 2, span = .3) +
-  #coord_cartesian(ylim = c(-40, 40)) +
-  guides(color = guide_legend(title = "Goalie Coach"), fill = FALSE) +
-  labs(y = "Adjusted GSAA per 60", x = "Game Number", title = "Marc-Andre Fleury Goalie Coach Comparison") +
-  theme_bw()
-ggsave("fleury coach line graph.png")
-
-?geom_smooth
-?sd
-
-maf_gp <- maf %>%
-  select(coach, Date) %>%
-  group_by(coach) %>%
-  count()
-
-maf_summary <- maf %>%
-  group_by(coach) %>%
-  summarize(adjgsaa60_mean = mean(adjgsaa60, na.rm = TRUE),
-            adjgsaa60_sd = sd(adjgsaa60, na.rm = TRUE)) %>%
-  gather(measure, metric, -coach)
-
-ggplot(filter(maf_summary, measure == "adjgsaa60_mean"), aes(measure, metric, fill = coach)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  coord_cartesian(ylim = c(0, .5)) +
-  labs(y = "Mean AdjGSAA per 60", x = "Goalie Coach", title = "Marc-Andre Fleury Coach Analysis") +
-  guides(fill = guide_legend(title = "Goalie Coach"), color = FALSE) +
-  theme_bw() +
-  theme(axis.text.x=element_blank(),
-        axis.ticks.x=element_blank())
-ggsave("maf coach mean.png")
-
-ggplot(filter(maf_summary, measure == "adjgsaa60_sd"), aes(measure, metric, fill = coach)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  labs(y = "Standard Deviation of Adjusted GSAA per 60", x = "Goalie Coach", title = "Marc-Andre Fleury Goalie Coach Comparison") +
-  guides(fill = guide_legend(title = "Goalie Coach"), color = FALSE) +
-  theme_bw() +
-  theme(axis.text.x=element_blank(),
-        axis.ticks.x=element_blank())
-ggsave("maf coach sd.png")
-
-ggplot(maf, aes(adjgsaa60, fill = coach, color = coach)) +
-  geom_density(alpha = I(.7)) +
-  geom_vline(xintercept = 0) +
-  labs(x = "Adjusted GSAA Per 60", y = "Density of observations", title = "Marc-Andre Fleury Goalie Coach Comparison") +
-  guides(fill = guide_legend(title = "Goalie Coach"), color = FALSE) +
-  theme_bw()
-ggsave("maf density plot.png")
-
-ggplot(maf, aes(adjgsaa60, fill = coach)) +  
-  geom_vline(xintercept = 0) +
-  geom_histogram(binwidth = .5) +
-  geom_vline(xintercept = 0) +
-  facet_wrap(~coach) +
-  scale_y_continuous(expand = c(0, 0)) +
-  scale_fill_viridis(discrete = TRUE) +
-  scale_color_viridis(discrete = TRUE) +
-  guides(fill = guide_legend(title = "Goalie Coach"), color = FALSE) +
-  labs(x = "Adjusted GSAA per 60", y = "Count of games", title = "Marc-Andre Fleury Goalie Coach Comparison") +
-  theme_bw()
-ggsave("maf histogram.png")
-
-goalie <- "Marc-Andre.Fleury"
-ggplot(filter(df_combined, Name == goalie), aes(adjgsaa60, fill = season)) +
-  geom_density(alpha = I(.7)) +
-  geom_vline(xintercept = 0) +
-  scale_y_continuous(label = percent) +
-  scale_x_continuous(limits = c(-40, 8)) +
-  labs(x = "Adjusted GSAA Per 60", y = "Density of observations", title = goalie) +
-  guides(fill = guide_legend(title = "Season"), color = FALSE) +
-  theme_bw()
+ggplot(player_gsaa, aes(name, adjgsaa60)) +
+  geom_col() +
+  labs(x = NULL)  
+?as.factor
+?geom_bar

@@ -130,16 +130,6 @@ df_combined %>%
           panel.background = element_rect(fill = "grey70"))
 ggsave("MAF gsaa difference.png", width = 12, height = 12)
 
-test <- df_combined %>%
-  select(season, name, adjgsaa60, toi) %>%
-  filter(toi > 2) %>%
-  mutate(key = paste0(name, season)) %>%
-  group_by(key) %>%
-  summarize(adjgsaa60 = mean(adjgsaa60),
-            toi = sum(toi)) %>%
-  filter(toi > 3000)
-
-
 df_combined %>%
   select(season, name, adjgsaa60, toi) %>%
   filter(toi > 2) %>%

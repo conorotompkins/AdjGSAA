@@ -21,6 +21,7 @@ maf <- read_csv("https://raw.githubusercontent.com/conorotompkins/AdjGSAA/master
          name = as.character(name), 
          date = ymd(date),
          coach = ifelse(date < "2013-06-23", "Giles Meloche", "Mike Bales"))
+write_csv(maf, "MAF games.csv")
 
 sum(maf$toi < 2)
 
@@ -52,7 +53,8 @@ ggsave("MAF career line chart with coaches.png", width = 12, height = 6)
 maf_coach_summary <- maf %>%
   group_by(coach) %>%
   summarize(adjgsaa60_mean = mean(adjgsaa60, na.rm = TRUE),
-            adjgsaa60_sd = sd(adjgsaa60, na.rm = TRUE)) 
+            adjgsaa60_sd = sd(adjgsaa60, na.rm = TRUE))
+write_csv(maf_coach_summary, "MAF coach summary.csv")
 
 ggplot(maf_coach_summary, aes(coach, adjgsaa60_mean, fill = coach)) +
   geom_col() +

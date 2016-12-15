@@ -1,0 +1,112 @@
+---
+title: "Did Mike Bales make a significant difference?"
+author: "Gordon Arsenoff"
+date: "12/5/2016"
+output:
+  html_document:
+    toc: true
+references:
+- id: rigbystasinopoulos05
+  title: 'Generalized additive models for location, scale and shape.'
+  author:
+  - family: Rigby
+    given: Robert A.
+  - family: Stasinopoulos
+    given: D.Mikis
+  container-title: "Journal of the Royal Statistical Society: Series C (Applied Statistics)"
+  volume: 54
+  issue: 3
+  issued:
+    year: 2005
+  page: 507-554
+  type: article-journal
+---
+### Overview
+
+Did the summer 2013 replacement of Penguins goalie coach Gilles Meloche with Mike Bales affect Marc-Andre Fleury's performance?
+
+[Conor O. Tompkins presents](http://www.nullhypothesishockey.com/did-mike-bales-make-a-difference/) some good graphs and free prepared data on the subject, but stops short of performing tests or taking a definite side.
+
+Tompkins appropriately splits the question into two: first, did Fleury's average per-game performance change? second, did Fleury become any more or less consistent? To address these, he looks at means and standard deviations of [Adjusted Goals Saved Above Average](https://twitter.com/NMercad).
+
+Reading Conor's piece, it jumped out at me that a sample difference of 0.13 units was being taken as possible evidence for a change in mean -- at the same time that a possible difference in standard deviation was getting suported by a sample shift from 2.44 to 1.87. Given the number of games played for each coach, this gives a standard error around 0.107 for mean adjusted GSAA/60 under Meloche and 0.131 under Bales.
+
+Testing a difference in means in the presence of a possible difference in variance as well is [not a wholly solved problem](https://en.wikipedia.org/wiki/Behrens%E2%80%93Fisher_problem), but this sent up red flags. The difference in means between the two samples is on the order of the standard error of each mean. Whatever approach is used to comparing these two samples, it shouldn't find a significant difference. Tompkins could have gone ahead and been more blunt: a shift in mean performance isn't clearly evident.
+
+On the other hand, an [F-test](https://en.wikipedia.org/wiki/F-test_of_equality_of_variances) rejects the null hypothesis that Fleury's true *variance* in performance was equal under Meloche and under Bales. The F-test is unfortunately sensitive to normality, though, and doesn't easily allow for a variation we might find worth trying -- weighting our data points by time on ice[^wate].
+
+### Testing with GAMLSS
+
+There is a technique, however, for testing a shift in both mean and variance at once: the [generalized additive model for location, scale, and shape](http://www.gamlss.org/wp-content/uploads/2013/01/gamlss-rss.pdf), or GAMLSS [@rigbystasinopoulos05]. The authors of the paper provide [an `R` package](https://cran.r-project.org/web/packages/gamlss/index.html) for the GAMLSS. Let's run some GAMLSS models to ask both whether Fleury has gotten better and whether he's gotten more consistent since the coaching change.
+
+The `gamlss` function takes input much like that of the familiar `lm` function for linear regression, but accepts an extra argument consisting of a formula specifying a model for the standard deviation as well as one for the mean[^default]. We'll start by estimating two of these: one with data equally weighted, and one with time on ice used as a weight for each game.
+
+```{r results='hide', message=FALSE}
+library(gamlss)
+
+foo <- read.csv("MAF games.csv") 
+Q   <- mean(foo$toi) # gamlss doesn't automatically normalize weights to mean 1; must do it ourselves
+bar <- list(bare = gamlss(adjgsaa60 ~ coach, ~ coach, data=foo),
+            wate = gamlss(adjgsaa60 ~ coach, ~ coach, data=foo, weights=toi/Q))
+
+s <- summary(bar$bare)
+r <- summary(bar$wate)
+```
+
+The `summary` function *prints* a whole lot to the console that doesn't look very good on the Web. What it *returns*, however, is a nice tidy matrix of coefficient information -- first about the model for the mean, then about the model for the standard deviation.
+
+```{r results='asis'}
+knitr::kable(s) # summary of estimates from unweighted full model
+knitr::kable(r) # summary of estimates from   weighted full model
+```
+
+As we thought, the effect of `coachMike Bales` on Fleury's adjusted GSAA/60 is not even remotely significant in either specification, but the same effect on the *standard deviation* of adjusted GSAA/60 is significant at the conventional 5% level.
+
+### Methodological axe-grinding
+
+The hypothesis testing framework is not actually a great way to draw conclusions. It's quite easy to get significant results but still be overfitting your data, and it's also quite easy to observe the converse -- terms that don't appear significant, but whose inclusion is still helpful for the model's prediction of future data. Instead of hypothesis testing, let's think about doing *model selection*.
+
+Below, I code up a list of eight GAMLSS models for Fleury's adjusted GSAA/60: with and without weights, with and without a coach effect on the mean, with and without a coach effect on the standard deviation. If we wanted to use just one of the weighted models, or just one of the unweighted ones, to inform our understanding of the data, what would we use to pick one of the four?
+
+The gold-standard measure of model quality, balancing good fit to the data used with simplicity to avoid overfitting those data, is the [Bayes factor](https://en.wikipedia.org/wiki/Bayes_factor); unfortunately, that's too hard to simply whip up for the GAMLSS[^factor]. A different metric that does the same balancing act in a non-Bayesian fashion is the [Akaike information criterion](https://en.wikipedia.org/wiki/Akaike_information_criterion), or AIC. The AIC is helpfully provided by the package.
+
+There is no conventional critical value for the difference in AIC between two models. Lower is simply better. If Model A has a higher AIC than Model B, we are best served to understand the data in terms of the latter instead of the former.
+
+```{r results='hide', message=FALSE}
+baz <- list()
+baz$bare <- list(coach = list(coach = gamlss(adjgsaa60 ~ coach, ~ coach, data=foo),
+                              null  = gamlss(adjgsaa60 ~ coach, ~     1, data=foo)),
+                 null  = list(coach = gamlss(adjgsaa60 ~     1, ~ coach, data=foo),
+                              null  = gamlss(adjgsaa60 ~     1, ~     1, data=foo)))
+baz$wate <- list(coach = list(coach = gamlss(adjgsaa60 ~ coach, ~ coach, data=foo, weights=toi/Q),
+                              null  = gamlss(adjgsaa60 ~ coach, ~     1, data=foo, weights=toi/Q)),
+                 null  = list(coach = gamlss(adjgsaa60 ~     1, ~ coach, data=foo, weights=toi/Q),
+                              null  = gamlss(adjgsaa60 ~     1, ~     1, data=foo, weights=toi/Q)))
+```
+
+Let's pull the AIC of each of those models and place them in a nice table.
+
+```{r results='asis', message=FALSE}
+knitr::kable(reshape2::dcast(plyr::ldply(names(baz), function(x) {
+  plyr::ldply(names(baz[[x]]), function(y) {
+    plyr::ldply(names(baz[[x]][[y]]), function(z) {
+      data.frame(`Mean model` = y, version = x, `Var model` = z, AIC = AIC(baz[[x]][[y]][[z]]),
+                 check.names=FALSE)
+    })
+  })
+}), `Var model` + `Mean model` ~ version), caption="AIC")
+```
+
+Whether we care to weight by time on ice or not, we find the lowest AIC to belong to the GAMLSS where we treat the standard deviation, but not the mean, of adjusted GSAA/60 as different between coaches. It's not just that the difference in means isn't big enough to show up through hypothesis testing -- it's that estimating a difference in mean at all looks more like overfitting than useful modeling.
+
+### Discussion
+
+We can pretty confidently stop worrying about any difference in mean performance level for Marc-Andre Fleury due to the change in Penguins goalie coaches. By contrast, Fleury's consistency has clearly improved in the time Bales has held the job.
+
+We ought to be careful yet about assigning to Bales a causal role in Fleury's increased consistency, however. We have not ruled out alternative explanations. Perhaps all goalies have become more consistent in the past few years. Perhaps the underlying change really occurred at some other time, but we are picking up a difference at the 2013 offseason because that's the only point in time we're testing. There's deeper we could dig into this question if we want.
+
+[^wate]: I'm actually not sure whether it's appropriate to weight the data points we have by ice time. On the one hand, the micro-level sample size from which we obtain a given observation in these data is larger the more minutes of play it's drawn from. On the other, ice time is not assigned randomly, or independently of performance, so down-weighting shorter games will mean down-weighting lower-performance appearances.
+[^default]: At least, these are the options it takes in the default case where the model for the mean is lienar and the resopnse is assumed to be Gaussian, i.e., where the GAMLSS is used as a variant of linear regression.
+[^factor]: Actually, it's not too tough to numerically approximate the Bayes factor for a model with one or two means and a common, known variance. Doing this for the Fleury data yields strong evidence in favor of a common mean. It's for the more complicated models that we'd really like to run, allowing the samples to have different variances and possibly treating them as unknown, that getting a Bayes factor is too tough for light work.
+
+### References

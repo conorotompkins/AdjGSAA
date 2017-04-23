@@ -2,6 +2,7 @@ library(tidyverse)
 
 setwd("~/github folder/AdjGSAA/corsica")
 
+theme_set(theme_bw())
 df <- read_csv("1617 5v5 individual game goalie data.csv")
 
 colnames(df) <- tolower(colnames(df))
@@ -55,11 +56,21 @@ predictions <- df %>%
          diffaa = diff - avg_diff,
          gsaa23 = (diffaa / sa) * 23) %>% 
   select(season, player, date, toi, sa, ga, xga, diff, diffaa, gsaa23) %>% 
-  mutate(prev_gsaa23 = lag(gsaa23)) %>% 
+  mutate(prev_gsaa23 = lag(gsaa23),
+         gsaa23_prev_25 = rollmean(x = gsaa23, 25, align = "left", fill = NA),
+         gsaa23_next_25 = rollmean(x = gsaa23, 25, align = "right", fill = NA)) %>% 
   na.omit()
 
-ggplot(predictions, aes(gsaa23, prev_gsaa23)) +
-  geom_point(alpha = .1)
+ggplot(predictions, aes(gsaa23_next_25, gsaa23_prev_25)) +
+  geom_point(alpha = .1) +
+  geom_smooth()
   
+cor(predictions$gsaa23_prev_25, predictions$gsaa23_next_25)
+#https://danieljhocking.wordpress.com/2014/12/03/lags-and-moving-means-in-dplyr/
+library(zoo)  
+?rollmean
 
-https://danieljhocking.wordpress.com/2014/12/03/lags-and-moving-means-in-dplyr/
+df_xgsaa <- df_xgsaa %>% 
+  group_by(player, season) %>% 
+  arrange(date) %>% 
+  mutate(

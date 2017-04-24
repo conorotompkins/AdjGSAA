@@ -3,18 +3,12 @@ library(lubridate)
 library(zoo)
 setwd("~/github folder/AdjGSAA/corsica")
 
+#https://danieljhocking.wordpress.com/2014/12/03/lags-and-moving-means-in-dplyr/
+
 theme_set(theme_bw())
 df_goalie <- read_csv("2007-08 to 2016-17 big goalie data.csv")
 
 colnames(df_goalie) <- tolower(colnames(df_goalie))
-
-#create season colums
-#create date range
-seasons <- data.frame(season = c("2007-2008",
-                                 "2008-2009"),
-                      beginning = as.POSIXct(c("2007-10-01",
-                                               "2008-10-01"), "%y-%m-%d"),
-                      end = as.POSIXct(c("2008-05-01", "2009-05-01"), "%y-%m-%d"))
 
 season20072008 <- data.frame(season = c("2007-2008"),
                              date = seq.POSIXt(as.POSIXct("2007-10-01", "%y-%m-%d"), 
@@ -57,6 +51,7 @@ season_list <- list(season20072008,
                                 season20142015,
                                 season20152016, 
                                 season20162017)
+
 df_season <- bind_rows(season_list) %>% 
   mutate(date = ymd(date),
          season = factor(season))
@@ -64,6 +59,9 @@ str(df_season$season)
 
 df_goalie <- df_goalie %>% 
   left_join(df_season)
+
+df_goalie <- df_goalie %>% 
+  rename(sv_percent = `sv%`)
 
 bad <- df_goalie[is.na(df_goalie$season), ] %>% 
   select(player, date, season)
@@ -92,7 +90,7 @@ predictions <- df_goalie %>%
   mutate(diff = ga - xga,
          diffaa = diff - avg_diff,
          gsaa23 = (diffaa / sa) * 23) %>% 
-  select(season, player, date, game_number, toi, sa, ga, xga, diff, diffaa, gsaa23)
+  select(season, player, date, game_number, toi, sa, ga, xga, diff, diffaa, gsaa23, sv_percent)
 
 predictions <- predictions %>%
   group_by(player, season) %>% 
@@ -100,37 +98,43 @@ predictions <- predictions %>%
   ungroup() %>% 
   filter(gp >= 50)
 
+window_size <- 30
 predictions <-  predictions %>% 
-  select(season, player, date, game_number, gsaa23) %>% 
+  select(season, player, date, game_number, gsaa23, sv_percent) %>% 
   group_by(player, season) %>% 
   arrange(player, desc(season), date) %>% 
-  mutate(gsaa23_prev_25 = rollapply(data = gsaa23, 
-                                    width = list(-1:-25), 
+  mutate(gsaa23_prev_mean = rollapply(data = gsaa23, 
+                                    width = list(-1:-window_size), 
                                     FUN = mean, 
                                     align = "right", 
                                     fill = NA, 
                                     na.rm = T),
-         gsaa23_next_25 = rollapply(data = gsaa23, 
-                                      width = list(1:25), 
+         gsaa23_next_mean = rollapply(data = gsaa23, 
+                                      width = list(1:window_size), 
                                       FUN = mean, 
                                       align = "right", 
                                       fill = NA, 
-                                      na.rm = T))
-           
-           
-           rollapply(data = gsaa23, 
-                     width=list(-1:-5) , 
-                     FUN = mean, 
-                     align = "right", 
-                     fill = NA, 
-                     na.rm = T))
-         ,
-         gsaa23_next_25 = rollapply(data = gsaa23, 
-                                    width = 25, 
+                                      na.rm = T),
+         gsaa23_prev_sd = rollapply(data = gsaa23, 
+                                    width = list(1:-window_size), 
+                                    FUN = sd, 
+                                    align = "right", 
+                                    fill = NA, 
+                                    na.rm = T),
+         sv_percent_prev = rollapply(data = sv_percent, 
+                                        width = list(-1:-window_size), 
+                                        FUN = mean, 
+                                        align = "right", 
+                                        fill = NA, 
+                                        na.rm = T),
+         sv_percent_next = rollapply(data = sv_percent, 
+                                    width = list(1:window_size), 
                                     FUN = mean, 
-                                    align = "left", 
+                                    align = "right", 
                                     fill = NA, 
                                     na.rm = T))
+           
+           
 lundqvist <- predictions %>% 
   filter(player == "HENRIK.LUNDQVIST") %>% 
   select(player, season, game_number, gsaa23, gsaa23_prev_25, gsaa23_next_25)
@@ -149,16 +153,28 @@ lundqvist %>%
   scale_y_reverse()
 
 
-ggplot(predictions, aes(gsaa23_next_25, gsaa23_prev_25)) +
+ggplot(predictions, aes(sv_percent_prev_25, sv_percent_next_25)) +
   geom_point(alpha = .1) +
   geom_smooth()
-  
-cor(predictions$gsaa23_prev_25, predictions$gsaa23_next_25)
-#https://danieljhocking.wordpress.com/2014/12/03/lags-and-moving-means-in-dplyr/
-library(zoo)  
-?rollmean
 
-df_xgsaa <- df_xgsaa %>% 
-  group_by(player, season) %>% 
-  arrange(date) %>% 
-  mutate(
+ggplot(predictions, aes(gsaa23_prev_25, gsaa23_next_25)) +
+  geom_point(alpha = .15) +
+  geom_smooth()
+
+model_gsaa23 <- lm(gsaa23_next_mean ~ gsaa23_prev_mean + gsaa23_prev_sd, data = predictions)  
+summary(model_gsaa23)
+plot.lm(model_gsaa23)
+?plot.lm
+model_sv_percent <- lm(sv_percent_next_25 ~ sv_percent_prev_25, data = predictions)  
+summary(model_sv_percent)
+par(mfrow = c(2, 2), oma = c(0, 0, 2, 0))
+plot(model_sv_percent)
+
+predictions$fit<- predict(model_gsaa23)
+
+predictions_clean <- predictions %>% 
+  na.omit()
+cor(predictions_clean$gsaa23_prev_25, predictions_clean$gsaa23_next_25)
+cor(predictions_clean$sv_percent_prev_25, predictions_clean$sv_percent_next_25)
+
+
